@@ -1,0 +1,131 @@
+---
+title: "BBLM-Vignette"
+author: "Eric Gao"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{my-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Using bblm for Bag of Little Boostraps Within Linear Regression
+The first step needed is to load our library. We want to fit a linear regression model using the bag of little bootstraps algorithm. Fitting a model here is essentially the same as fitting one for a regular linear regression model with `lm`, however, there are a few extra parameters here:
+
+1.  m
+  : This parameter controls the number of subsamples used in the bag of little bootstraps algorithm. It is 10 by default.
+2.  B
+  : This parameters controls the number of bootstraps per sub sample. By default, is it 5000.
+3.  par
+  : This parameter controls whether or not the user wants to use multiple cores for a more efficient run time. If TRUE, parallelization is used. More information is available in the documentation `?blblm`. 
+
+The flights data from the nycflights13 package will be used as a demonstration, but I will also use the built in data sets iris as well as mtcars.
+
+```{r setup}
+library(blblm)
+library(furrr)
+library(bench)
+suppressWarnings(plan(multiprocess, workers = 6))
+options(future.rng.onMisuse = "ignore")
+set.seed(200)
+```
+
+
+
+```{r}
+fit <- blblm(Sepal.Length  ~ Petal.Length * Petal.Width, data = iris, m = 500, B = 1000, par = FALSE)
+```
+
+
+Using `par=TRUE` is faster, which will be demonstrated below:
+  
+```{r}
+fit1 <- blblm(Sepal.Length  ~ Petal.Length * Petal.Width, data = iris, m = 500, B = 1000, par = TRUE)
+```
+
+The two are then bench marked:
+
+```{r}
+bench::mark(
+  fit1,
+  fit,
+  check = FALSE
+)
+```
+
+As we can see here, using parallelization allows our code to run more efficiently.
+
+## Finding Sigma for our Regression model:
+
+If we want the standard deviation of our regression model, we can do so easily as well, using parallelization or not. If parallelization was used to build the model, all we need to do is change the par parameter to true. However, if parallelization was not used to fit the blblm model, make sure to run `suppressWarnings(plan(multiprocess, workers = 4))` and `options(future.rng.onMisuse = "ignore")`. Here, I added an extra parameter to the function, called par:
+
+1.  object
+  : This parameter controls the number of subsamples used in the bag of little bootstraps algorithm. It is 10 by default.
+2.  confidence
+  : This parameter is logical. By default this is FALSE. IF TRUE, running `sigma` gives a confidence interval for sigma
+3.  par
+  : This parameter controls whether or not the user wants to use multiple cores for a more efficient run time. If TRUE, parallelization is used. More information is available in the documentation `?sigma.blblm`.
+
+
+```{r}
+newfit =  blblm(Sepal.Length ~ Petal.Length * Petal.Width, data = iris, m = 5000, B=10000, par = TRUE)
+bench::mark(
+  par_version = sigma(newfit, par = TRUE),
+  non_par = sigma(newfit, par = FALSE),
+  filter_gc = FALSE
+)
+```
+
+As we can see above, benchmarking to find sigma works better with parallel processing. However, it is most effective  when 1) the dataset is relatively large, and 2) the number of subsamples and bootstraps are large. In this case, the flights data has over 300,000 rows. For a smaller dataset, parallel processing is most likely not worth it. For example, when we compare `mtcars_fit` using both parallelization and non-parallelization to find the sigma involving the `mtcars` dataset, we find that parallelization isn't too helpful:
+
+```{r}
+mtcars_fit = blblm(mpg ~ wt * hp, data = mtcars, m = 3, B = 10, par=TRUE)
+bench::mark(
+  sigma(mtcars_fit, par = TRUE),
+  sigma(mtcars_fit, par = FALSE),
+  filter_gc = F
+)
+```
+
+
+We can see that the difference between the two times are not all that significant. So, with smaller datasets, using parallelization may not be all that worth it. 
+
+## Finding Coefficients for the Model
+
+If we want the coefficients of our regression model, we can do so easily as well, using parallelization or not. If parallelization was used to build the model, all we need to do is change the par parameter to TRUE. However, if parallelization was not used to fit the blblm model, make sure to run `suppressWarnings(plan(multiprocess, workers = 4))` and `options(future.rng.onMisuse = "ignore")`. Here, I added an extra parameter to the function, called par:
+
+1.  object
+  : This is an object of class "blblm".
+2.  par
+  : This parameter controls whether or not the user wants to use multiple cores for a more efficient run time. If TRUE, parallelization is used.
+  
+
+An example:
+  
+```{r}
+fit = blblm(Sepal.Length ~ Petal.Length * Petal.Width, data = iris, m=10, B=5000)
+bench::mark(
+  coef(fit, par=T),
+  coef(fit, par = F),
+  filter_gc = F
+)
+```
+
+Here, we can see that the non-parallelization is faster. However, this is becasue our dataset is quite small and B is 5000. If we used a bigger dataset, and increased B, it's likely that that becomes more efficient. 
+
+
+
+
+
+
+
+
+
+
+
