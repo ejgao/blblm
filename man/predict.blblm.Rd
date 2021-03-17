@@ -4,22 +4,31 @@
 \alias{predict.blblm}
 \title{Obtain the predictions/prediction intervals}
 \usage{
-\method{predict}{blblm}(object, new_data, confidence = FALSE, level = 0.95, ...)
+\method{predict}{blblm}(object, new_data, confidence = FALSE, level = 0.95, par = FALSE, ...)
 }
 \arguments{
 \item{object}{object of class "blblm"}
 
-\item{new_data}{object}
+\item{new_data}{dataframe indicating the new values to be used for prediction}
 
 \item{confidence}{a logical value, FALSE by default, indicating whether or not user wants the prediction interval in addition to the predicted value}
 
 \item{level}{numeric specify the level of the prediction interval}
+
+\item{par}{FALSE by default. TRUE if user wants to use parallelization}
+
+\item{...}{optional arguments to be passed}
 }
 \value{
-numeric
+numeric value indicating the new prediction. However, if \code{confidence = TRUE}, this gives both the numeric value of the
+prediction as well as the prediction interval.
 }
 \description{
 We use this function \code{predict.blblm} in order to find coefficients for all variables involved. This is comparable to using \code{coef}
+}
+\details{
+\code{predict} gives the predicted value of the new data value(s). Using \code{confidence = TRUE}also yields the respective
+prediction interval.
 }
 \examples{
 fit = blblm(mpg ~ hp * wt, data = mtcars, m = 3, B = 100)

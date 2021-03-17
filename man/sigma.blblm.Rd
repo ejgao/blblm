@@ -12,7 +12,7 @@
 \item{par}{logical FALSE by default. TRUE indicates desire to use parallelization.}
 }
 \value{
-numeric
+numeric indicating the value for sigma for this model.
 }
 \description{
 We use this function \code{sigma.blblm} in order to find coefficients for all variables involved. This is comparable to using \code{sigma}

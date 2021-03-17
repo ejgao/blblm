@@ -4,7 +4,7 @@
 \name{blblm-package}
 \alias{blblm}
 \alias{blblm-package}
-\title{Calculate some statistics via Weighted Linear Regression}
+\title{Calculate some statistics via Linear Regression With a Bag of Little Bootstraps Implementation}
 \arguments{
 \item{formula}{an object of class "formula"}
 

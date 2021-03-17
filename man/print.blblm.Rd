@@ -8,10 +8,19 @@
 }
 \arguments{
 \item{x}{object of class "blblm"}
+
+\item{...}{optional arguments to be passed}
 }
 \value{
 This returns the model and the formula used to fit it.
 }
 \description{
 Use this to print out the formula.
+}
+\details{
+If the user wants to print out the model and the respective model, using \code{print} will do just that
+}
+\examples{
+fit = blblm(mpg ~ hp * wt, data = mtcars, m = 3, B = 100)
+print(fit)
 }

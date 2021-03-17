@@ -12,12 +12,19 @@
 \item{parm}{NULL by default, as it takes the variables obtained from the blblm fit. This should be a vector of characters that user wants to find confidence interval on.}
 
 \item{level}{numeric. Specify the confidence level}
+
+\item{par}{logical. Indicate whether or not user wants parallelization to be run. FALSE by default.}
+
+\item{...}{optional arguments to be passed}
 }
 \value{
-numeric
+interval indicating the confidence interval for the coefficients involved.
 }
 \description{
 We use this function \code{confint.blblm} in order to find the confidence interval for all variables involved. This is comparable to using \code{confint}
+}
+\details{
+Running \code{confint} gives the 95\%(by default) confidence interval for the respective fitted coefficients.
 }
 \examples{
 fit = blblm(mpg ~ hp * wt, data = mtcars, m = 3, B = 100)

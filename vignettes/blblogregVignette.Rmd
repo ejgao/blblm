@@ -1,0 +1,168 @@
+---
+title: "blblogregVignette"
+author: "Eric Gao"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{blblogregVignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(blblm)
+library(furrr)
+library(bench)
+suppressWarnings(plan(multiprocess, workers = 6))
+options(future.rng.onMisuse = "ignore")
+set.seed(200)
+```
+
+## Using blblog for Bag of Little Boostraps Within Logistic Regression
+
+The first step needed is to load our library. We want to fit a logistic regression model using the bag of little bootstraps algorithm. Fitting a model here is essentially the same as fitting one for a regular linear regression model with `lm`, however, there are a few extra parameters here:
+
+1.  m
+  : This parameter controls the number of subsamples used in the bag of little bootstraps algorithm. It is 10 by default.
+2.  B
+  : This parameters controls the number of bootstraps per sub sample. By default, is it 5000.
+3.  par
+  : This parameter controls whether or not the user wants to use multiple cores for a more efficient run time. If TRUE, parallelization is used. More information is available in the documentation `?blblog`. 
+
+I will use the iris data set in order to demonstrate how these functions work. 
+
+To fit the model:
+
+```{r}
+fit = blblog(Species ~ Sepal.Length, data = iris, m = 2, B = 2)
+```
+
+To do it with parallelization:
+
+```{r}
+fit_par = blblog(Species ~ Sepal.Length, data = iris, m = 2, B = 2, par = T)
+```
+
+Comparing speeds:
+
+```{r}
+bench::mark(
+  fit_par,
+  fit,
+  check = FALSE
+)
+```
+
+With such a small dataset as well as small `B`, parallelization may not be consistently faster. Parallelization is fastest with a bigger dataset or bigger B. 
+
+
+## Printing Out the Model
+
+In the event that the user wants to print out the formula of the blblogreg model, simple use `print`:
+
+```{r}
+print(fit)
+```
+
+Unlike linear regression, logistic regression does not have a sigma value. So, we will skip that step. Next, we will solve for the coefficients of the logistic regression model.
+
+## Calculating the Coefficients of the Blblogreg Model:
+
+To calculate the coefficients of our model, we have these parameters:
+
+1.  object
+  : This is an object of class "blblog".
+2.  par
+  : This parameter controls whether or not the user wants to use multiple cores for a more efficient run time. If TRUE, parallelization is used.
+
+Example:
+
+```{r}
+fit = blblog(Species ~ Sepal.Length, data = iris, m = 2, B = 2, par = F)
+bench::mark(
+  coef(fit, par = TRUE),
+  coef(fit)
+)
+```
+
+Similarly, because our dataset is relatively small, parallelization is not worth it. However, with a bigger data set, this would change.
+
+## Calculating the Confidence Interval of the Blblogreg Model:
+
+To calculate the coefficients of our model, we have these parameters:
+
+1.  object
+  : This is an object of class "blblog".
+2.  parm
+  : This variable indicates the variables to be used in order to do parallelization. If not specified, the variables from the "blblm" object are taken. `NULL` by default.
+3.  level
+  : This indicates the level of the confidence; it is 0.95 by default.
+4.  par
+  : This parameter controls whether or not the user wants to use multiple cores for a more efficient run time. If TRUE, parallelization is used.
+  
+
+Example:
+
+```{r}
+bench::mark(
+  confint(fit, par = T),
+  confint(fit)
+)
+```
+
+Similarly, parallelization may not be faster if the data set is relatively small.
+
+## Predictions/Prediction Intervals
+
+Finally, to calculate the predicted value of our model, we have these parameter:s
+
+1.  object
+  : This is an object of class "blblog".
+2.  new_data
+  : This variable indicates the variables to be used in order to do parallelization. If not specified, the variables from the "blblm" object are taken. NULL by default.
+3.  confidence
+  : This is a logical value. If TRUE, then the prediction interval is given. If not, simply a numeric value will be given
+4.  level
+  : This indicates the level of the prediction interval; it is 0.95 by default.
+5.  par
+  : This parameter controls whether or not the user wants to use multiple cores for a more efficient run time. If TRUE, parallelization is used.
+6. type
+  : This parameter is by default "link", which shows the predicted logit value. Using type = "response" shows the probability that the predicted value is of class 1.
+  
+Since the `predict` function works best and is most interpretable. I will split the iris data set by the first 100 rows so that they are only two response variables, setosa and versicolor. I will also parallelization when `type ="link"` as well as `type = response`. 
+
+```{r}
+newiris = iris[1:100, ]
+fit = blblog(Species ~ Sepal.Length, data = newiris, m = 2, B=2)
+newdata = data.frame(Sepal.Length=c(5.1))
+predict_fit_par = predict(fit, new_data = newdata, type = "link", par = T)
+predict_fit = predict(fit, new_data = newdata, type = "link")
+bench::mark(
+  predict_fit_par,
+  predict_fit,
+)
+```
+
+Using `type = response` makes our model more interpretable.
+
+```{r}
+newiris = iris[1:100, ]
+fit = blblog(Species ~ Sepal.Length, data = newiris, m = 2, B=2)
+newdata = data.frame(Sepal.Length=c(5.1))
+predict_fit_par = predict(fit, new_data = newdata, type = "response", par = T)
+predict_fit = predict(fit, new_data = newdata, type = "response")
+bench::mark(
+  predict_fit_par,
+  predict_fit
+)
+```
+
+Here, we can see that with a Sepal length of 5.1, our predicted model using `predict_fit_par` gives a predicted value of `r predict_fit_par`, meaning there is a `r predict_fit_par *100`% chance of being in class 1, which is setosa. 
+
+However, in both cases, due to our data set being small, it may not be the case that parallelization is faster.
